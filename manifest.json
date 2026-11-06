@@ -1,0 +1,61 @@
+{
+  "id": "ds_imports",
+  "name": "DS Imports",
+  "version": "0.1.0",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "game_version": ">=0.3.98",
+  "category": "GRAPHICS",
+  "priority": 50,
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "incompatible": [],
+  "experimental": true,
+  "permissions": [
+    "engine_internals"
+  ],
+  "optional_imports": [
+    {
+      "id": "dppt",
+      "name": "Pokemon Diamond, Pearl or Platinum (.nds)",
+      "file": "dppt.nds",
+      "verify": "mod",
+      "extensions": [
+        ".nds"
+      ],
+      "max_size": 536870912,
+      "description": "Any region. Platinum has the most: its extra forms, trainers and people. Battle sprites, trainer pictures and overworld sprites are pulled out once, in the background while you play."
+    },
+    {
+      "id": "hgss",
+      "name": "Pokemon HeartGold or SoulSilver (.nds)",
+      "file": "hgss.nds",
+      "verify": "mod",
+      "extensions": [
+        ".nds"
+      ],
+      "max_size": 536870912,
+      "description": "Any region. Battle sprites, trainer pictures, overworld sprites and all the walking Pokemon are pulled out once, in the background while you play."
+    },
+    {
+      "id": "bw2",
+      "name": "Pokemon Black 2 or White 2 (.nds)",
+      "file": "bw2.nds",
+      "verify": "mod",
+      "extensions": [
+        ".nds"
+      ],
+      "max_size": 536870912,
+      "description": "Any region, including NDSi-enhanced dumps. Animated battle sprites, trainer pictures and overworld sprites are pulled out once, in the background while you play."
+    }
+  ],
+  "description": "Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 and White 2 dumps, for other mods to use: battle sprites, trainer pictures, overworld sprites and HeartGold/SoulSilver's walking Pokemon. Nothing from the games ships with it.",
+  "github": "ElvieBlooms/ds_imports",
+  "games": [
+    "gen1",
+    "gen2",
+    "gen3"
+  ]
+}
