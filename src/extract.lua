@@ -325,8 +325,27 @@ local function sprite(member, first, graphics, normal, shiny)
   return s
 end
 
+-- one still pose (tick 0), for an animation the engine's exporter won't take
+-- (an introduction longer than its 240-tick bound)
+local function still(s)
+  local Composer = require("src.import.gen5.Composer")
+  local pixels, width, _, bounds = Composer.renderIndexed(s.graphics, s.normal, s.cells, s.nanr, s.nmcr, s.map, 0)
+  local visible = {}
+  local minx, miny, maxx, maxy = math.huge, math.huge, -math.huge, -math.huge
+  for offset, color in pairs(pixels) do
+    local x = (offset - 1) % width + bounds.min_x
+    local y = math.floor((offset - 1) / width) + bounds.min_y
+    visible[#visible + 1] = { x = x, y = y, color = color }
+    minx, miny, maxx, maxy = math.min(minx, x), math.min(miny, y), math.max(maxx, x + 1), math.max(maxy, y + 1)
+  end
+  assert(minx < maxx, "no visible pixels")
+  return { frames = { visible }, durations = { 1 }, width = maxx - minx, height = maxy - miny,
+    min_x = minx, min_y = miny, loopStartFrame = 0, ticks = 1, cycleCapped = false }
+end
+
 local function animated(entry, pack, id, s, palettes)
-  local poses = Bw.poses(s, function(d, n) if d % 16 == 0 then coroutine.yield() end end)
+  local ok, poses = pcall(Bw.poses, s, function(d, n) if d % 16 == 0 then coroutine.yield() end end)
+  if not ok then poses = still(s) end
   for _, p in ipairs(palettes) do
     if s[p[2]] then
       local image, meta = Bw.image(poses, s[p[2]])
@@ -368,8 +387,7 @@ function Extract.gen5(ctx, rom, paths, entry, alias, packs, step, setTotal)
     local ok, s = pcall(sprite, function(i) return pokemon.member(base + i) end, first, graphicsAt, 18, 19)
     if not ok then return false end
     local id = ("PAL/%s/%s%s%s"):format(dex3(dex), side, formId and ("/form/" .. formId) or "", female and "/female" or "")
-    animated(entry, "battle_sprites", id, s, both)
-    return true
+    return (pcall(animated, entry, "battle_sprites", id, s, both))
   end
 
   for dex = 1, paths.count do
@@ -397,7 +415,7 @@ function Extract.gen5(ctx, rom, paths, entry, alias, packs, step, setTotal)
   local function person(arc, i, id)
     local b = i * 8
     local ok, s = pcall(sprite, function(k) return arc.member(b + k) end, 2, 1, 7)
-    if ok then animated(entry, "trainer_pics", "PAL/" .. id, s, { { "", "normal" } }) end
+    if ok then pcall(animated, entry, "trainer_pics", "PAL/" .. id, s, { { "", "normal" } }) end
   end
   for i = 0, math.floor(trainers.count / 8) - 1 do
     person(trainers, i, ("front/%03d"):format(i))

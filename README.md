@@ -46,6 +46,8 @@ end
 
 - Black 2/White 2 pictures are put together with the engine's own Black/White importer code, so it needs gen1recomp 0.3.98 or newer.
 - Arceus's types and Genesect's drives are colour changes in Black 2/White 2, and only the base picture is pulled out.
+- A few Black 2/White 2 animations run longer than the engine's exporter allows; those come out as a single still frame (`frames = 1`).
+- Pulling everything out takes a while the first time: roughly 10 to 15 minutes per Gen 4 game and longer for Black 2/White 2, spread over play so the game doesn't stutter. `api.status()` reports the progress.
 - Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects. Black 2/White 2 have no such list, so their trainers and overworld sheets are numbered.
 - When the engine gets importers of its own for these games, DS Imports can step aside.
 
