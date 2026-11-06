@@ -1,10 +1,10 @@
-# DS Imports
+# Prism Importer
 
 Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 and White 2 dumps, for other gen1recomp mods to use. It doesn't change anything in the game on its own: it's a provider, like the engine's own Black/White importer. Nothing from the games ships with it.
 
 ## Setup
 
-1. Install DS Imports and turn it on.
+1. Install Prism Importer and turn it on.
 2. In its imports, pick whichever dumps you have (`.nds`, any region):
    - **Diamond, Pearl or Platinum.** Platinum has the most: its extra forms, trainers and people.
    - **HeartGold or SoulSilver.** Adds the walking Pokémon.
@@ -24,11 +24,11 @@ Battle sprite ids match the engine's Black/White pack: `normal/025/front`, `shin
 
 ## For mod authors
 
-Add `"optional_dependencies": ["ds_imports"]`, then:
+Add `"optional_dependencies": ["prism_importer"]`, then:
 
 ```lua
-local ds = mod.find("ds_imports")
-local api = ds and ds.exports
+local importer = mod.find("prism_importer")
+local api = importer and importer.exports
 if api and api.apiVersion == 1 then
   local games = api.games()         -- { dppt = { name, family, packs = { battle_sprites = 4250, ... } }, ... }
   local image, entry = api.image("hgss", "battle_sprites", "normal/025/front")
@@ -49,7 +49,7 @@ end
 - A few Black 2/White 2 animations run longer than the engine's exporter allows; those come out as a single still frame (`frames = 1`).
 - Pulling everything out takes a while the first time: roughly 10 to 15 minutes per Gen 4 game and longer for Black 2/White 2, spread over play so the game doesn't stutter. `api.status()` reports the progress.
 - Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects. Black 2/White 2 have no such list, so their trainers and overworld sheets are numbered.
-- When the engine gets importers of its own for these games, DS Imports can step aside.
+- When the engine gets importers of its own for these games, Prism Importer can step aside.
 
 ## Credits
 

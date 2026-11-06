@@ -1,4 +1,4 @@
--- DS Imports: sprites from the player's own DS dumps, for other mods.
+-- Prism Importer: sprites from the player's own DS dumps, for other mods.
 -- Import a Diamond/Pearl/Platinum, HeartGold/SoulSilver or Black 2/White 2
 -- dump in this mod's imports; the sprites are pulled out once, a little each
 -- frame, into this mod's cache, and handed out through mod.exports. Nothing
@@ -6,7 +6,7 @@
 local mod = ...
 -- loaded on first use (the extractor pulls in the engine's Gen 5 readers)
 local Extract = setmetatable({}, { __index = function(self, k)
-  local real = require("mods.ds_imports.src.extract")
+  local real = require("mods.prism_importer.src.extract")
   setmetatable(self, { __index = real })
   return real[k]
 end })

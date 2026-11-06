@@ -1,6 +1,6 @@
 {
-  "id": "ds_imports",
-  "name": "DS Imports",
+  "id": "prism_importer",
+  "name": "Prism Importer",
   "version": "0.1.0",
   "api": 2,
   "entry": "main.lua",
@@ -52,7 +52,7 @@
     }
   ],
   "description": "Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 and White 2 dumps, for other mods to use: battle sprites, trainer pictures, overworld sprites and HeartGold/SoulSilver's walking Pokemon. Nothing from the games ships with it.",
-  "github": "ElvieBlooms/ds_imports",
+  "github": "ElvieBlooms/prism_importer",
   "games": [
     "gen1",
     "gen2",

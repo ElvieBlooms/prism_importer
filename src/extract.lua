@@ -18,10 +18,10 @@ local Graphics = require("src.import.gen5.Graphics")
 local Cells = require("src.import.gen5.Cells")
 local Animation = require("src.import.gen5.Animation")
 local Bw = require("src.import.gen5.BwImport")
-local Rom = require("mods.ds_imports.src.rom")
-local Pictures = require("mods.ds_imports.src.gen4.pictures")
-local Btx = require("mods.ds_imports.src.gen4.btx")
-local Names = require("mods.ds_imports.src.gen4.names")
+local Rom = require("mods.prism_importer.src.rom")
+local Pictures = require("mods.prism_importer.src.gen4.pictures")
+local Btx = require("mods.prism_importer.src.gen4.btx")
+local Names = require("mods.prism_importer.src.gen4.names")
 
 local Extract = { VERSION = "1.0.0", FRAME = 80 }
 

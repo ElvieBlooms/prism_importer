@@ -1,18 +1,18 @@
 -- run from the mod folder: ENGINE=<gen1recomp checkout> luajit tests/run.lua
 local ENGINE=os.getenv("ENGINE") or "../gen1recomp"
 package.path=ENGINE.."/?.lua;"..ENGINE.."/?/init.lua;./?.lua;"..package.path
-package.preload["mods.ds_imports.src.gen4.pictures"]=function() return dofile("src/gen4/pictures.lua") end
-package.preload["mods.ds_imports.src.gen4.btx"]=function() return dofile("src/gen4/btx.lua") end
-package.preload["mods.ds_imports.src.gen4.names"]=function() return dofile("src/gen4/names.lua") end
-package.preload["mods.ds_imports.src.rom"]=function() return dofile("src/rom.lua") end
-package.preload["mods.ds_imports.src.extract"]=function() return dofile("src/extract.lua") end
+package.preload["mods.prism_importer.src.gen4.pictures"]=function() return dofile("src/gen4/pictures.lua") end
+package.preload["mods.prism_importer.src.gen4.btx"]=function() return dofile("src/gen4/btx.lua") end
+package.preload["mods.prism_importer.src.gen4.names"]=function() return dofile("src/gen4/names.lua") end
+package.preload["mods.prism_importer.src.rom"]=function() return dofile("src/rom.lua") end
+package.preload["mods.prism_importer.src.extract"]=function() return dofile("src/extract.lua") end
 -- ROM-free checks for the Gen 4 importers: the picture cipher, BTX0
 -- textures, the names tables and the importer registry.
-local Pictures=require("mods.ds_imports.src.gen4.pictures")
-local Btx=require("mods.ds_imports.src.gen4.btx")
-local Names=require("mods.ds_imports.src.gen4.names")
-local Gen4=require("mods.ds_imports.src.extract")
-local Rom=require("mods.ds_imports.src.rom")
+local Pictures=require("mods.prism_importer.src.gen4.pictures")
+local Btx=require("mods.prism_importer.src.gen4.btx")
+local Names=require("mods.prism_importer.src.gen4.names")
+local Gen4=require("mods.prism_importer.src.extract")
+local Rom=require("mods.prism_importer.src.rom")
 local count=0
 local function check(value,what) assert(value,what);count=count+1 end
 local function rejects(fn,what) check(not pcall(fn),what) end
@@ -155,4 +155,4 @@ check(src and src.family=="pt" and src.name:find("Platinum"),"Platinum is a dppt
 local none,why=Gen4.identify("hgss",read)
 check(none==nil and why:find("HeartGold"),"Platinum isn't HeartGold/SoulSilver")
 check(Gen4.serialize({a=1,b={"x"}}):find('%["b"%]'),"index serializes")
-print("ds_imports PASS "..count.." checks")
+print("prism_importer PASS "..count.." checks")
