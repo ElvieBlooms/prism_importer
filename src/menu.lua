@@ -184,6 +184,16 @@ end
 local function gb(mod, api, games, liveGame)
   if not (mod.content and mod.content.screens and mod.ui and mod.ui.Font) then return end
   local Font = mod.ui.Font
+  -- A translation pack's TTF prints in the current colour (Game Boy tiles
+  -- are black whatever it is), so text is always drawn in black, as the
+  -- game's own screens and PRISM's do -Elvie
+  local function ink(s, x, y)
+    local r, g, b, al = love.graphics.getColor()
+    love.graphics.setColor(0, 0, 0, 1)
+    local w = Font.draw(s, x, y)
+    love.graphics.setColor(r, g, b, al)
+    return w
+  end
   local pageId = mod.id .. "_page"
   mod.content.screens:register(pageId, {
     new = function(game)
@@ -202,17 +212,17 @@ local function gb(mod, api, games, liveGame)
       end
       function self:draw()
         Font.drawBox(0, 0, 20, 18)
-        Font.draw("IMPORTER", 8, 8)
+        ink("IMPORTER", 8, 8)
         local list = menu.rows(api, games)
         for i, row in ipairs(list) do
           local y = 24 + (i - 1) * 12
           if i == self.index then
             local Theme = mod.ui.Theme
             if Theme and Theme.cursor and Font.drawCode then Font.drawCode(Theme.cursor, 8, y)
-            else Font.draw(">", 8, y) end
+            else ink(">", 8, y) end
           end
-          Font.draw(row.label, 16, y)
-          Font.draw(row.valueLabel, 64, y)
+          ink(row.label, 16, y)
+          ink(row.valueLabel, 64, y)
         end
         local picked = list[self.index]
         local lines = picked and menu.about(api, picked.who) or {}
@@ -221,17 +231,17 @@ local function gb(mod, api, games, liveGame)
           local cur = ""
           for word in tostring(line.text):upper():gmatch("%S+") do
             if #cur > 0 and #cur + 1 + #word > 18 then
-              if n < 4 then Font.draw(cur, 8, 80 + n * 8) end
+              if n < 4 then ink(cur, 8, 80 + n * 8) end
               n = n + 1; cur = word
             else
               cur = #cur > 0 and (cur .. " " .. word) or word
             end
           end
-          if #cur > 0 and n < 4 then Font.draw(cur, 8, 80 + n * 8); n = n + 1 end
+          if #cur > 0 and n < 4 then ink(cur, 8, 80 + n * 8); n = n + 1 end
         end
         local text, cur = menu.progress(api, games)
         if cur then text = ("%s %d%%"):format(SHORT[cur.game] or cur.game, percent(cur)) end
-        Font.draw(tostring(text):sub(1, 18), 8, 116)
+        ink(tostring(text):sub(1, 18), 8, 116)
         menu.drawBar(8, 127, 152, 6, cur and percent(cur) or 0)
       end
       return self
