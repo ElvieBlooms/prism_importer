@@ -4,6 +4,7 @@ package.path=ENGINE.."/?.lua;"..ENGINE.."/?/init.lua;./?.lua;"..package.path
 package.preload["mods.prism_importer.src.gen4.pictures"]=function() return dofile("src/gen4/pictures.lua") end
 package.preload["mods.prism_importer.src.gen4.btx"]=function() return dofile("src/gen4/btx.lua") end
 package.preload["mods.prism_importer.src.gen4.names"]=function() return dofile("src/gen4/names.lua") end
+package.preload["mods.prism_importer.src.gen5.names"]=function() return dofile("src/gen5/names.lua") end
 package.preload["mods.prism_importer.src.rom"]=function() return dofile("src/rom.lua") end
 package.preload["mods.prism_importer.src.extract"]=function() return dofile("src/extract.lua") end
 -- ROM-free checks for the Gen 4 importers: the picture cipher, BTX0
@@ -155,4 +156,21 @@ check(src and src.family=="pt" and src.name:find("Platinum"),"Platinum is a dppt
 local none,why=Gen4.identify("hgss",read)
 check(none==nil and why:find("HeartGold"),"Platinum isn't HeartGold/SoulSilver")
 check(Gen4.serialize({a=1,b={"x"}}):find('%["b"%]'),"index serializes")
+
+-- Black 2/White 2 names (pokebw2's lists) and the model tables they're read with
+local Bw2Names=require("mods.prism_importer.src.gen5.names")
+check(#Bw2Names.FRONTS==188 and Bw2Names.FRONTS[1]=="pkmn_trainer_nate" and Bw2Names.FRONTS[3]=="youngster","Black 2/White 2 trainer names")
+check(#Bw2Names.BACKS==31 and Bw2Names.PEOPLE[231]=="hero","Black 2/White 2 backs and people")
+local function narc(member)
+  local fatb="BTAF"..u32(12+8)..u16(1)..u16(0)..u32(0)..u32(#member)
+  local fntb="BTNF"..u32(16)..u32(4)..u16(0)..u16(1)
+  local gmif="GMIF"..u32(8+#member)..member
+  return "NARC"..u16(0xfffe)..u16(0x0100)..u32(16+#fatb+#fntb+#gmif)..u16(16)..u16(3)..fatb..fntb..gmif
+end
+local function record(code,kind,member) return u16(code)..string.char(kind,0)..string.rep("\0",12)..u16(member)..string.rep("\0",10) end
+local models=narc(u32(3)..record(231,1,7)..record(0x1001,1,9)..record(0x2000,2,0))
+local walking=narc(u16(25)..u16(1)..u16(0)..u16(0x1001))
+local fake={file=function(path) return path=="/m" and models or walking end}
+local owners=Gen4.bw2Owners(fake,{models="/m",walking="/w"})
+check(owners[7][1].id=="hero" and owners[9][1].id=="025/female" and owners[9][1].walking and owners[0]==nil,"model table names sprites, walking Pokemon and skips 3D models")
 print("prism_importer PASS "..count.." checks")

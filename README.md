@@ -16,9 +16,9 @@ Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 a
 | Pack | Diamond/Pearl/Platinum, HeartGold/SoulSilver | Black 2/White 2 |
 | --- | --- | --- |
 | `battle_sprites` | every Pokémon's front and back, normal and shiny, female pictures, alternate forms and eggs (80x80 frames) | every Pokémon's front and back, normal and shiny, female pictures and alternate forms, with their idle animation |
-| `trainer_pics` | every trainer class by name (`front/leader_whitney`), and the players' backs (`back/00`...) | every trainer picture and back, animated, by number (`front/000`, `back/00`) |
-| `overworld` | every overworld sheet by the game's own name (`hero`, `ookido`) | every overworld sheet by number (`000`...) |
-| `walking_pokemon` | HeartGold/SoulSilver's walking Pokémon (`normal/025`, `shiny/201/form/b`) | |
+| `trainer_pics` | every trainer class by name (`front/leader_whitney`), and the players' backs (`back/00`...) | every trainer picture and back, animated, by name (`front/leader_elesa`, `back/hero`) |
+| `overworld` | every overworld sheet by the game's own name (`hero`, `ookido`) | every overworld sheet by name where it has one (`hero`, `nurse`), otherwise by its object code (`080`) |
+| `walking_pokemon` | HeartGold/SoulSilver's walking Pokémon (`normal/025`, `shiny/201/form/b`) | the walking Pokémon of the Entree Forest, Hidden Grottoes and Game Sync (`normal/025`, `normal/003/female`, `normal/201/form/5`) |
 
 Battle sprite ids match the engine's Black/White pack: `normal/025/front`, `shiny/025/back/female`, and forms as `normal/386/front/form/attack` (Gen 4, by name) or `normal/386/front/form/1` (Black 2/White 2, by number).
 
@@ -48,9 +48,9 @@ end
 - Arceus's types are colour changes in Black 2/White 2, so only its base picture is pulled out.
 - A few Black 2/White 2 animations run longer than the engine's exporter allows; those come out as a single still frame (`frames = 1`).
 - Pulling everything out takes a while the first time: roughly 10 to 15 minutes per Gen 4 game and longer for Black 2/White 2, spread over play so the game doesn't stutter. `api.status()` reports the progress.
-- Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects. Black 2/White 2 have no such list, so their trainers and overworld sheets are numbered.
+- Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects. Black 2/White 2's trainer and overworld names follow the pokebw2 decompilation's lists, and its walking Pokémon are read from the game's own table, by species, sex and form number. Some Black 2/White 2 people aren't named there yet, so they keep their object code's number.
 - When the engine gets importers of its own for these games, Prism Importer can step aside.
 
 ## Credits
 
-By Elvie. Decoding notes from pret's Gen 4 projects and the engine's AnimaEngine-based Black/White importer.
+By Elvie. Decoding notes from pret's Gen 4 projects and the engine's AnimaEngine-based Black/White importer. Black 2/White 2 names and table layouts from [pokebw2](https://github.com/fuddlesworth/pokebw2) by fuddlesworth and its contributors (names only; `tools/bw2_names.py` writes them).

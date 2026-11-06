@@ -3,3 +3,5 @@ tests/
 .gitignore
 .modkitignore
 tests/run.lua
+tools/
+tools/bw2_names.py

@@ -8,7 +8,7 @@
 --                    Black/White importer makes it)
 --   trainer_pics     trainer classes' pictures and the players' backs
 --   overworld        overworld sprite sheets
---   walking_pokemon  HeartGold/SoulSilver's walking Pokemon
+--   walking_pokemon  HeartGold/SoulSilver's and Black 2/White 2's walking Pokemon
 --
 -- Ids follow the engine's gen5_bw pack: normal/025/front, shiny/025/back/female.
 -- -Elvie
@@ -22,8 +22,9 @@ local Rom = require("mods.prism_importer.src.rom")
 local Pictures = require("mods.prism_importer.src.gen4.pictures")
 local Btx = require("mods.prism_importer.src.gen4.btx")
 local Names = require("mods.prism_importer.src.gen4.names")
+local Bw2Names = require("mods.prism_importer.src.gen5.names")
 
-local Extract = { VERSION = "1.0.0", FRAME = 80 }
+local Extract = { VERSION = "1.1.0", FRAME = 80 }
 
 Extract.GAMES = {
   dppt = { name = "Diamond, Pearl or Platinum",
@@ -45,9 +46,10 @@ Extract.PATHS = {
     stride = 5, graphics = 4, palette = 1, overworld = "/a/0/8/1", walking = "tsure_poke" },
   -- Black 2/White 2: Pokemon (20 members each; forms from slot 685 on, as
   -- the personal data's form sprite start says), trainers and backs (8
-  -- members each), overworld textures, personal data
+  -- members each), overworld textures and the model table that names them,
+  -- the walking Pokemon's table, personal data
   bw2 = { pokemon = "/a/0/0/4", trainers = "/a/0/7/1", backs = "/a/0/7/2", overworld = "/a/0/4/8",
-    personal = "/a/0/1/6", formBase = 685, count = 649 },
+    models = "/a/0/4/7", walking = "/a/2/0/8", personal = "/a/0/1/6", formBase = 685, count = 649 },
 }
 
 -- which family a dump is, from its game code
@@ -417,12 +419,13 @@ function Extract.gen5(ctx, rom, paths, entry, alias, packs, step, setTotal)
     local ok, s = pcall(sprite, function(k) return arc.member(b + k) end, 2, 1, 7)
     if ok then pcall(animated, entry, "trainer_pics", "PAL/" .. id, s, { { "", "normal" } }) end
   end
+  -- named as pokebw2's lists name them; any past the lists by number
   for i = 0, math.floor(trainers.count / 8) - 1 do
-    person(trainers, i, ("front/%03d"):format(i))
+    person(trainers, i, "front/" .. (Bw2Names.FRONTS[i + 1] or ("%03d"):format(i)))
     step("Trainer " .. i)
   end
   for i = 0, math.floor(backs.count / 8) - 1 do
-    person(backs, i, ("back/%02d"):format(i))
+    person(backs, i, "back/" .. (Bw2Names.BACKS[i + 1] or ("%02d"):format(i)))
     step("Trainer back " .. i)
   end
   if packs.trainer_pics then
@@ -431,17 +434,97 @@ function Extract.gen5(ctx, rom, paths, entry, alias, packs, step, setTotal)
     packs.trainer_pics = renamed
   end
 
-  -- overworld textures have no names of their own here: by archive member
+  local owners = Extract.bw2Owners(rom, paths)
+  local walkingSeen = {}
   for i = 0, overworld.count - 1 do
     local data = overworld.member(i)
     if data:sub(1, 4) == "BTX0" then
       local ok, tex = pcall(Btx.parse, data)
       if ok then
         local frames = Btx.frames(tex)
-        if #frames > 0 and #tex.palettes > 0 then Extract.sheet(entry, "overworld", ("%03d"):format(i), tex, frames, i) end
+        if #frames > 0 and #tex.palettes > 0 then
+          local list = owners[i] or { { id = ("member_%03d"):format(i) } }
+          local first = { overworld = nil, walking_pokemon = nil }
+          for _, owner in ipairs(list) do
+            if owner.walking then
+              if not walkingSeen[owner.id] then
+                walkingSeen[owner.id] = true
+                if first.walking_pokemon then
+                  for _, palette in ipairs({ "normal", "shiny" }) do
+                    if packs.walking_pokemon[palette .. "/" .. first.walking_pokemon] then
+                      alias("walking_pokemon", palette .. "/" .. owner.id, palette .. "/" .. first.walking_pokemon)
+                    end
+                  end
+                else
+                  Extract.walkingSheet(entry, owner.id, tex, frames, i)
+                  first.walking_pokemon = owner.id
+                end
+              end
+            elseif not (packs.overworld and packs.overworld[owner.id]) then
+              if first.overworld then
+                alias("overworld", owner.id, first.overworld)
+              else
+                Extract.sheet(entry, "overworld", owner.id, tex, frames, i)
+                first.overworld = owner.id
+              end
+            end
+          end
+        end
       end
     end
     step("Overworld " .. i)
+  end
+end
+
+-- graphics member -> { { id, walking } } from the model table (a/0/4/7: a
+-- count, then 28-byte records of object code, type, ..., graphics member at
+-- 16) and the walking Pokemon's table (a/2/0/8: species, sex, form, object
+-- code). Sprites are type 1. Layouts follow pokebw2's notes. -Elvie
+function Extract.bw2Owners(rom, paths)
+  local walkingByCode = {}
+  local okW, walking = pcall(function() return Narc.open(rom.file(paths.walking)).member(0) end)
+  if okW then
+    for o = 0, #walking - 8, 8 do
+      local species, sex, form, code = Rom.u16(walking, o), Rom.u16(walking, o + 2), Rom.u16(walking, o + 4), Rom.u16(walking, o + 6)
+      local id = dex3(species)
+      if form > 0 then id = id .. "/form/" .. form
+      elseif sex == 1 then id = id .. "/female" end
+      walkingByCode[code] = walkingByCode[code] or id
+    end
+  end
+  local owners = {}
+  local okT, models = pcall(function() return Narc.open(rom.file(paths.models)).member(0) end)
+  if not okT or #models < 4 then return owners end
+  local count = Rom.u32(models, 0)
+  for r = 0, count - 1 do
+    local o = 4 + r * 28
+    if o + 28 > #models then break end
+    local code, kind, member = Rom.u16(models, o), models:byte(o + 3), Rom.u16(models, o + 16)
+    if kind == 1 then
+      local owner
+      if code >= 0x1000 and code < 0x2000 then
+        owner = walkingByCode[code] and { id = walkingByCode[code], walking = true }
+      end
+      owner = owner or { id = Bw2Names.PEOPLE[code] or ("%03d"):format(code) }
+      owners[member] = owners[member] or {}
+      table.insert(owners[member], owner)
+    end
+  end
+  return owners
+end
+
+-- a walking Pokemon: its frames in one row, normal then shiny palettes
+function Extract.walkingSheet(entry, id, tex, frames, member)
+  local fw, fh = frames[1].width, frames[1].height
+  for p, pal in ipairs(tex.palettes) do
+    local palette = p == 1 and "normal" or p == 2 and "shiny" or ("alt" .. (p - 1))
+    local image = love.image.newImageData(fw * #frames, fh)
+    for f, t in ipairs(frames) do
+      if t.width == fw and t.height == fh then Btx.draw(tex, t, pal, image, (f - 1) * fw, 0) end
+    end
+    local width, height = image:getDimensions()
+    entry("walking_pokemon", palette .. "/" .. id, png(image), { width = width, height = height,
+      frames = #frames, sprite = { width = fw, height = fh, columns = #frames, frames = #frames, member = member } })
   end
 end
 
