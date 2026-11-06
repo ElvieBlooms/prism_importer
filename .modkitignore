@@ -2,3 +2,4 @@ baseroms/
 tests/
 .gitignore
 .modkitignore
+tests/run.lua
