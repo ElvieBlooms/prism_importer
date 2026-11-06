@@ -86,21 +86,15 @@ local function check()
   end
 end
 
--- plain data as JSON, for the worker (it reads it with the engine's
--- decoder) -Elvie
-local function menuJson(v)
+-- plain data as a Lua table constructor, for the worker (it loads it with
+-- no environment at all) -Elvie
+local function luaData(v)
   local t = type(v)
-  if t == "string" then
-    return '"' .. v:gsub('[%c"\\]', function(c) return ("\\u%04x"):format(c:byte()) end) .. '"'
+  if t == "string" then return ("%q"):format(v)
   elseif t == "number" or t == "boolean" then return tostring(v)
-  elseif t ~= "table" then return "null" end
-  if #v > 0 or next(v) == nil then
-    local out = {}
-    for i = 1, #v do out[i] = menuJson(v[i]) end
-    return "[" .. table.concat(out, ",") .. "]"
-  end
+  elseif t ~= "table" then return "nil" end
   local out = {}
-  for k, x in pairs(v) do out[#out + 1] = menuJson(tostring(k)) .. ":" .. menuJson(x) end
+  for k, x in pairs(v) do out[#out + 1] = "[" .. luaData(k) .. "]=" .. luaData(x) end
   return "{" .. table.concat(out, ",") .. "}"
 end
 
@@ -114,7 +108,7 @@ local function descriptor()
   if not okJ then return nil, "no job I/O" end
   local d, err = JobAssetIO.descriptor(entry.manifest, entry.path or mod.path)
   if not d then return nil, err end
-  return menuJson(d)
+  return luaData(d)
 end
 
 local function startThread(game)

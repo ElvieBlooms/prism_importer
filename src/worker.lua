@@ -9,7 +9,7 @@ require("love.image")
 require("love.data")
 require("love.timer")
 
-local modId, modPath, game, descriptorJson, outName, controlName = ...
+local modId, modPath, game, descriptorData, outName, controlName = ...
 local out = love.thread.getChannel(outName)
 local control = love.thread.getChannel(controlName)
 
@@ -23,9 +23,10 @@ table.insert(package.loaders or package.searchers, function(name)
 end)
 
 local ok, err = pcall(function()
-  local Json = require("src.link.Json")
   local JobAssetIO = require("src.mods.JobAssetIO")
-  local io_, ioErr = JobAssetIO.open(Json.decode(descriptorJson), love.filesystem, modId)
+  local chunk = load("return " .. descriptorData, "=descriptor", "t", {})
+  local descriptor = chunk and chunk()
+  local io_, ioErr = JobAssetIO.open(descriptor, love.filesystem, modId)
   if not io_ then error(ioErr or "the import can't be opened", 0) end
   local Extract = require("mods.prism_importer.src.extract")
   local co = coroutine.create(function()
