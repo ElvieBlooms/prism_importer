@@ -1,7 +1,7 @@
 {
   "id": "prism_importer",
   "name": "Prism Importer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -14,7 +14,8 @@
   "incompatible": [],
   "experimental": true,
   "permissions": [
-    "engine_internals"
+    "engine_internals",
+    "compute"
   ],
   "optional_imports": [
     {
@@ -26,7 +27,7 @@
         ".nds"
       ],
       "max_size": 536870912,
-      "description": "Any region. Platinum has the most: its extra forms, trainers and people. Battle sprites, trainer pictures and overworld sprites are pulled out once, in the background while you play."
+      "description": "Any region. Platinum has the most: its extra forms, trainers and people. Battle sprites, trainer pictures and overworld sprites are pulled out when you import it from IMPORTER in PRISM."
     },
     {
       "id": "hgss",
@@ -37,7 +38,7 @@
         ".nds"
       ],
       "max_size": 536870912,
-      "description": "Any region. Battle sprites, trainer pictures, overworld sprites and all the walking Pokemon are pulled out once, in the background while you play."
+      "description": "Any region. Battle sprites, trainer pictures, overworld sprites and all the walking Pokemon are pulled out when you import it from IMPORTER in PRISM."
     },
     {
       "id": "bw2",
@@ -48,10 +49,10 @@
         ".nds"
       ],
       "max_size": 536870912,
-      "description": "Any region, including NDSi-enhanced dumps. Animated battle sprites, trainer pictures and overworld sprites are pulled out once, in the background while you play."
+      "description": "Any region, including NDSi-enhanced dumps. Animated battle sprites, trainer pictures and overworld sprites are pulled out when you import it from IMPORTER in PRISM."
     }
   ],
-  "description": "Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 and White 2 dumps, for other mods to use: battle sprites, trainer pictures, overworld sprites and HeartGold/SoulSilver's walking Pokemon. Nothing from the games ships with it.",
+  "description": "Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 and White 2 dumps, for other mods to use: battle sprites, trainer pictures, overworld sprites and walking Pokemon. Imports start from its IMPORTER page in PRISM and run on their own thread. Nothing from the games ships with it.",
   "github": "ElvieBlooms/prism_importer",
   "games": [
     "gen1",

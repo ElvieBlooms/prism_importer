@@ -5,6 +5,7 @@ package.preload["mods.prism_importer.src.gen4.pictures"]=function() return dofil
 package.preload["mods.prism_importer.src.gen4.btx"]=function() return dofile("src/gen4/btx.lua") end
 package.preload["mods.prism_importer.src.gen4.names"]=function() return dofile("src/gen4/names.lua") end
 package.preload["mods.prism_importer.src.gen5.names"]=function() return dofile("src/gen5/names.lua") end
+package.preload["mods.prism_importer.src.menu"]=function() return dofile("src/menu.lua") end
 package.preload["mods.prism_importer.src.rom"]=function() return dofile("src/rom.lua") end
 package.preload["mods.prism_importer.src.extract"]=function() return dofile("src/extract.lua") end
 -- ROM-free checks for the Gen 4 importers: the picture cipher, BTX0
@@ -173,4 +174,17 @@ local walking=narc(u16(25)..u16(1)..u16(0)..u16(0x1001))
 local fake={file=function(path) return path=="/m" and models or walking end}
 local owners=Gen4.bw2Owners(fake,{models="/m",walking="/w"})
 check(owners[7][1].id=="hero" and owners[9][1].id=="025/female" and owners[9][1].walking and owners[0]==nil,"model table names sprites, walking Pokemon and skips 3D models")
+
+-- the IMPORTER page's words
+local Menu=require("mods.prism_importer.src.menu")
+check(Menu.label({state="needed"})=="IMPORT" and Menu.label({state="running",done=43,total=100})=="43%" and Menu.label(nil)=="NO DUMP","IMPORTER row labels")
+local all={dppt={state="ready"},hgss={state="needed"},bw2={state="failed"}}
+local api={status=function() return all end,current=function() end}
+check(Menu.value(api,{"dppt","hgss","bw2"})=="2 TO IMPORT","PRISM list: dumps waiting")
+all.hgss={state="running",done=1,total=4}
+check(Menu.value(api,{"dppt","hgss","bw2"})=="IMPORTING 25%","PRISM list: importing")
+all={dppt={state="ready"}}
+check(Menu.value(api,{"dppt","hgss","bw2"})=="READY" and Menu.progress(api,{"dppt"})=="ALL IMPORTED.","everything imported")
+local rows=Menu.rows({status=function() return {dppt={state="needed"},hgss={state="absent"}} end},{"dppt","hgss"})
+check(rows[1].action and not rows[2].action and rows[3].label=="ALL" and rows[3].action,"only dumps that can import have an action")
 print("prism_importer PASS "..count.." checks")

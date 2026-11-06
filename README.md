@@ -9,7 +9,12 @@ Sprites from your own Diamond, Pearl, Platinum, HeartGold, SoulSilver, Black 2 a
    - **Diamond, Pearl or Platinum.** Platinum has the most: its extra forms, trainers and people.
    - **HeartGold or SoulSilver.** Adds the walking Pokémon.
    - **Black 2 or White 2.** NDSi-enhanced dumps work.
-3. Start any game. The sprites are pulled out once, a little each frame while you play, and kept in the mod's cache. Replacing a dump pulls it out again.
+3. Start any game and open **PRISM**, then **IMPORTER** (in the START menu or the OPTION menu). PRISM's list says how many dumps are waiting, as "2 TO IMPORT".
+4. Pick a dump and press A to import it, or ALL for every one waiting. The sprites go into the mod's cache, and the bar shows how far along it is. You can leave the page and keep playing while it works.
+
+Nothing imports until you ask. Picking a different dump later puts it back to IMPORT; an imported one can be imported again from its row.
+
+The import runs on a thread of its own (the `compute` permission), so the game keeps its speed. On the test machine Platinum took about 10 seconds, HeartGold about 8 and Black 2 about 50. A slower device will take longer.
 
 ## What comes out
 
@@ -36,7 +41,8 @@ if api and api.apiVersion == 1 then
 end
 ```
 
-- `api.status()` gives each dump's progress: `absent`, `pending`, `running`, `ready` or `failed`, with `done`, `total` and `message`.
+- `api.status()` gives each dump's state: `absent` (none picked), `needed` (picked, not imported), `queued`, `running`, `ready` or `failed`, with `done`, `total` and `message`.
+- `api.start(game)` imports a dump that's `needed` or `failed` (every one, with no game), `api.reimport(game)` imports one again, and `api.current()` gives the one importing now, as `{ game, done, total }`.
 - `api.entries(game, pack)` lists a pack.
 - `api.imageData(game, pack, id)` returns a fresh ImageData.
 - Games are `dppt`, `hgss` and `bw2`.
@@ -47,7 +53,7 @@ end
 - Black 2/White 2 pictures are put together with the engine's own Black/White importer code, so it needs gen1recomp 0.3.98 or newer.
 - Arceus's types are colour changes in Black 2/White 2, so only its base picture is pulled out.
 - A few Black 2/White 2 animations run longer than the engine's exporter allows; those come out as a single still frame (`frames = 1`).
-- Pulling everything out takes a while the first time: roughly 10 to 15 minutes per Gen 4 game and longer for Black 2/White 2, spread over play so the game doesn't stutter. `api.status()` reports the progress.
+- Without a thread (if the engine refuses one), an import runs a slice of each frame instead, which is much slower; the log says so.
 - Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects. Black 2/White 2's trainer and overworld names follow the pokebw2 decompilation's lists, and its walking Pokémon are read from the game's own table, by species, sex and form number. Some Black 2/White 2 people aren't named there yet, so they keep their object code's number.
 - When the engine gets importers of its own for these games, Prism Importer can step aside.
 

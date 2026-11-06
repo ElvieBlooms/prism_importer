@@ -1,8 +1,9 @@
 -- Prism Importer: sprites from the player's own DS dumps, for other mods.
--- Import a Diamond/Pearl/Platinum, HeartGold/SoulSilver or Black 2/White 2
--- dump in this mod's imports; the sprites are pulled out once, a little each
--- frame, into this mod's cache, and handed out through mod.exports. Nothing
--- from the games ships with the mod. -Elvie
+-- Pick a Diamond/Pearl/Platinum, HeartGold/SoulSilver or Black 2/White 2
+-- dump in this mod's imports, then import it from the IMPORTER page in
+-- PRISM. The import runs on its own thread (the "compute" permission) into
+-- this mod's cache, and the sprites are handed out through mod.exports.
+-- Nothing from the games ships with the mod. -Elvie
 local mod = ...
 -- loaded on first use (the extractor pulls in the engine's Gen 5 readers)
 local Extract = setmetatable({}, { __index = function(self, k)
@@ -12,15 +13,23 @@ local Extract = setmetatable({}, { __index = function(self, k)
 end })
 
 local GAMES = { "dppt", "hgss", "bw2" }
-local BUDGET = 0.005 -- seconds of extraction a frame
+-- Without a thread, the import runs a slice of each frame instead: this
+-- much of it, in seconds. -Elvie
+local BUDGET = 0.005
 
+-- state per dump: absent (none picked), needed (picked, not imported yet,
+-- or picked again), queued, running, ready, failed -Elvie
 local state = {
   games = {},      -- game -> loaded index
-  status = {},     -- game -> { state, done, total, message }
-  job = nil,       -- { game, co }
+  status = {},     -- game -> { state, done, total, message, stamp }
+  queue = {},      -- games the player asked for, in order
+  job = nil,       -- { game, stamp, thread, out, control } or { game, stamp, co }
   images = {},     -- "game/pack/id" -> love Image
   checkedAt = -1,
+  game = nil,      -- the running game, for the loader
+  threadNote = nil,
 }
+local jobs = 0
 
 local function log(fmt, ...) mod.log:info(fmt, ...) end
 
@@ -34,7 +43,7 @@ end
 
 -- the cache is current for this import when its stamp matches the import's
 local function stampOf(info)
-  return ("%s|%s|%s"):format(Extract.VERSION, tostring(info.size), tostring(info.modtime))
+  return ("%s|%s|%s"):format(Extract.VERSION, tostring(info.size), tostring(info.modtime or info.md5))
 end
 
 local function loadIndex(game)
@@ -50,39 +59,115 @@ local function stamp(game)
   return ok and src or nil
 end
 
+local function queued(game)
+  for _, g in ipairs(state.queue) do if g == game then return true end end
+  return false
+end
+
 local function check()
   for _, game in ipairs(GAMES) do
     local okInfo, info = pcall(mod.imports.info, mod.imports, game)
     local st = state.status[game] or {}
     state.status[game] = st
     if not (okInfo and type(info) == "table") then
-      st.state, st.message = "absent", nil
+      st.state, st.message, st.stamp = "absent", nil, nil
       state.games[game] = nil
     elseif not (state.job and state.job.game == game) then
-      if stamp(game) == stampOf(info) then
+      local now = stampOf(info)
+      if stamp(game) == now then
         if not state.games[game] then state.games[game] = loadIndex(game) end
-        st.state = state.games[game] and "ready" or "pending"
-      elseif st.state ~= "failed" or st.stamp ~= stampOf(info) then
-        st.state, st.stamp = "pending", stampOf(info)
+        st.state = state.games[game] and "ready" or "needed"
+      elseif st.state == "failed" and st.stamp == now then
+        -- stays failed until it's asked for again -Elvie
+      else
+        st.state, st.stamp = queued(game) and "queued" or "needed", now
       end
     end
   end
 end
 
+-- plain data as JSON, for the worker (it reads it with the engine's
+-- decoder) -Elvie
+local function menuJson(v)
+  local t = type(v)
+  if t == "string" then
+    return '"' .. v:gsub('[%c"\\]', function(c) return ("\\u%04x"):format(c:byte()) end) .. '"'
+  elseif t == "number" or t == "boolean" then return tostring(v)
+  elseif t ~= "table" then return "null" end
+  if #v > 0 or next(v) == nil then
+    local out = {}
+    for i = 1, #v do out[i] = menuJson(v[i]) end
+    return "[" .. table.concat(out, ",") .. "]"
+  end
+  local out = {}
+  for k, x in pairs(v) do out[#out + 1] = menuJson(tostring(k)) .. ":" .. menuJson(x) end
+  return "{" .. table.concat(out, ",") .. "}"
+end
+
+-- The worker gets the same import/cache descriptor the engine's own
+-- background jobs get, built from this mod's manifest. -Elvie
+local function descriptor()
+  local loader = state.game and state.game.mods
+  local entry = type(loader) == "table" and type(loader.mods) == "table" and loader.mods[mod.id]
+  if not (type(entry) == "table" and type(entry.manifest) == "table") then return nil, "no manifest" end
+  local okJ, JobAssetIO = pcall(require, "src.mods.JobAssetIO")
+  if not okJ then return nil, "no job I/O" end
+  local d, err = JobAssetIO.descriptor(entry.manifest, entry.path or mod.path)
+  if not d then return nil, err end
+  return menuJson(d)
+end
+
+local function startThread(game)
+  local okT, thread = pcall(function() return love.thread.newThread(mod.path .. "/src/worker.lua") end)
+  if not okT or not thread then return nil, tostring(thread) end
+  local d, err = descriptor()
+  if not d then return nil, err end
+  jobs = jobs + 1
+  local outName, controlName = ("prism_importer_out_%d"):format(jobs), ("prism_importer_control_%d"):format(jobs)
+  local out, control = love.thread.getChannel(outName), love.thread.getChannel(controlName)
+  out:clear(); control:clear()
+  thread:start(mod.id, mod.path, game, d, outName, controlName)
+  return { thread = thread, out = out, control = control }
+end
+
 local function startNext()
-  for _, game in ipairs(GAMES) do
-    local st = state.status[game]
-    if st and st.state == "pending" then
-      local info = mod.imports:info(game)
-      local co = coroutine.create(function()
-        return Extract.run({ game = game, read = readerFor(game), cache = mod.cache })
-      end)
-      state.job = { game = game, co = co, stamp = stampOf(info) }
-      st.state, st.done, st.total, st.message = "running", 0, 1, "Starting"
-      state.games[game] = nil
-      log("extracting %s", game)
-      return
+  local game = table.remove(state.queue, 1)
+  if not game then return end
+  local st = state.status[game]
+  if not (st and (st.state == "queued" or st.state == "needed" or st.state == "failed")) then return startNext() end
+  local okInfo, info = pcall(mod.imports.info, mod.imports, game)
+  if not (okInfo and type(info) == "table") then return startNext() end
+  local job, why = startThread(game)
+  if job then
+    log("importing %s on its own thread", game)
+  else
+    if state.threadNote ~= why then
+      state.threadNote = why
+      log("no thread (%s): importing a little each frame", tostring(why))
     end
+    job = { co = coroutine.create(function()
+      return Extract.run({ game = game, read = readerFor(game), cache = mod.cache })
+    end) }
+  end
+  job.game, job.stamp = game, stampOf(info)
+  state.job = job
+  st.state, st.done, st.total, st.message = "running", 0, 1, "Starting"
+  state.games[game] = nil
+end
+
+local function finish(job, ok, message)
+  local st = state.status[job.game]
+  state.job = nil
+  if ok then
+    state.games[job.game] = loadIndex(job.game)
+    mod.cache:write(job.game .. "/stamp.txt", job.stamp)
+    st.state, st.message = state.games[job.game] and "ready" or "failed", nil
+    if not state.games[job.game] then st.message = "the import's index didn't load" end
+    state.images = {}
+    log("%s imported", job.game)
+  else
+    st.state, st.message = "failed", tostring(message)
+    mod.log:warn("%s: %s", job.game, tostring(message))
   end
 end
 
@@ -90,41 +175,45 @@ local function pump()
   local job = state.job
   if not job then return end
   local st = state.status[job.game]
+  if job.thread then
+    while true do
+      local msg = job.out:pop()
+      if not msg then break end
+      if msg.kind == "progress" then
+        st.done, st.total, st.message = msg.done, msg.total, msg.status
+      elseif msg.kind == "done" then
+        return finish(job, true)
+      elseif msg.kind == "failed" then
+        return finish(job, false, msg.message)
+      elseif msg.kind == "stopped" then
+        state.job, st.state = nil, "needed"
+        return
+      end
+    end
+    local err = job.thread:getError()
+    if err then return finish(job, false, err) end
+    return
+  end
   local clock = love.timer.getTime
   local deadline = clock() + BUDGET
   repeat
     local ok, value = coroutine.resume(job.co)
-    if not ok then
-      st.state, st.message = "failed", tostring(value)
-      mod.log:warn("%s: %s", job.game, tostring(value))
-      state.job = nil
-      return
-    end
-    if coroutine.status(job.co) == "dead" then
-      state.games[job.game] = value
-      mod.cache:write(job.game .. "/stamp.txt", job.stamp)
-      st.state, st.message = "ready", nil
-      state.images = {}
-      log("%s ready: %s", job.game, value.source and value.source.name or "")
-      state.job = nil
-      return
-    end
+    if not ok then return finish(job, false, value) end
+    if coroutine.status(job.co) == "dead" then return finish(job, true) end
     if type(value) == "table" and value.total then
-      if math.floor(value.done / 500) ~= math.floor((st.done or 0) / 500) then
-        log("%s: %d of %d (%s)", job.game, value.done, value.total, tostring(value.status))
-      end
       st.done, st.total, st.message = value.done, value.total, value.status
     end
   until clock() >= deadline
 end
 
 mod.hooks:wrap("core.update", function(nextFn, game, dt, ...)
+  if type(game) == "table" then state.game = game end
   local now = love.timer.getTime()
-  if not state.job and now - state.checkedAt > 2 then
+  if now - state.checkedAt > 2 and not state.job then
     state.checkedAt = now
     pcall(check)
-    startNext()
   end
+  if not state.job then startNext() end
   pump()
   return nextFn(game, dt, ...)
 end)
@@ -148,13 +237,47 @@ function mod.exports.games()
   return out
 end
 
--- { game = { state = absent|pending|running|ready|failed, done, total, message } }
+-- { game = { state = absent|needed|queued|running|ready|failed, done, total, message } }
 function mod.exports.status()
   local out = {}
   for game, st in pairs(state.status) do
     out[game] = { state = st.state, done = st.done, total = st.total, message = st.message }
   end
   return out
+end
+
+-- Import a dump (or every dump that needs it, with no game); returns how
+-- many were queued. -Elvie
+function mod.exports.start(game)
+  pcall(check)
+  local n = 0
+  for _, g in ipairs(GAMES) do
+    local st = state.status[g]
+    if (game == nil or game == g) and st and (st.state == "needed" or st.state == "failed") and not queued(g) then
+      state.queue[#state.queue + 1] = g
+      st.state, st.message = "queued", nil
+      n = n + 1
+    end
+  end
+  return n
+end
+
+-- Import a dump again, though it's imported already -Elvie
+function mod.exports.reimport(game)
+  if state.job and state.job.game == game then return 0 end
+  pcall(mod.cache.write, mod.cache, game .. "/stamp.txt", "")
+  state.games[game] = nil
+  local st = state.status[game]
+  if st then st.state = "needed" end
+  return mod.exports.start(game)
+end
+
+-- what's importing now: { game, done, total } or nil -Elvie
+function mod.exports.current()
+  local job = state.job
+  if not job then return nil end
+  local st = state.status[job.game] or {}
+  return { game = job.game, done = st.done or 0, total = st.total or 1, threaded = job.thread ~= nil }
 end
 
 -- id -> { file, width, height, frames, sprite = { width, height, columns, frames, ... } }
@@ -192,3 +315,8 @@ function mod.exports.image(game, pack, id)
 end
 
 pcall(check)
+
+do
+  local ok, err = pcall(function() require("mods.prism_importer.src.menu").start(mod, mod.exports, GAMES) end)
+  if not ok then mod.log:warn("IMPORTER isn't in PRISM: %s", tostring(err)) end
+end
