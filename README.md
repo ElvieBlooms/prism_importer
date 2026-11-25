@@ -24,6 +24,8 @@ The import runs on a thread of its own (the `compute` permission), so the game k
 | `trainer_pics` | every trainer class by name (`front/leader_whitney`), and the players' backs (`back/00`...) | every trainer picture and back, animated, by name (`front/leader_elesa`, `back/hero`) |
 | `overworld` | every overworld sheet by the game's own name (`hero`, `ookido`) | every overworld sheet by name where it has one (`hero`, `nurse`), otherwise by its object code (`080`) |
 | `walking_pokemon` | HeartGold/SoulSilver's walking Pokémon (`normal/025`, `shiny/201/form/b`) | the walking Pokémon of the Entree Forest, Hidden Grottoes and Game Sync (`normal/025`, `normal/003/female`, `normal/201/form/5`) |
+| `item_icons` | HeartGold/SoulSilver's bag icons, 32x32, by item name (`poke_ball`, `potion`, `tm24`, `level_ball`) | |
+| `balls` | HeartGold/SoulSilver's thrown balls, all 25 (`poke_ball`, `fast_ball`, `park_ball`): nine 16x16 turns in a row, the open ball (32x32) under them | |
 
 Battle sprite ids match the engine's Black/White pack: `normal/025/front`, `shiny/025/back/female`, and forms as `normal/386/front/form/attack` (Gen 4, by name) or `normal/386/front/form/1` (Black 2/White 2, by number).
 
@@ -46,6 +48,7 @@ end
 - `api.entries(game, pack)` lists a pack.
 - `api.imageData(game, pack, id)` returns a fresh ImageData.
 - Games are `dppt`, `hgss` and `bw2`.
+- A `balls` entry's `open` gives where its open ball is in the sheet (`x`, `y`, `width`, `height`).
 - Sheets run left to right in frames of `sprite.width` x `sprite.height`, wrapping at `sprite.columns`. Black 2/White 2 animations also carry `durations` (in 60ths of a second) and `loopStartFrame`, as the engine's Black/White pack does.
 
 ## Notes
@@ -54,7 +57,7 @@ end
 - Arceus's types are colour changes in Black 2/White 2, so only its base picture is pulled out.
 - A few Black 2/White 2 animations run longer than the engine's exporter allows; those come out as a single still frame (`frames = 1`).
 - Without a thread (if the engine refuses one), an import runs a slice of each frame instead, which is much slower; the log says so.
-- Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects. Black 2/White 2's trainer and overworld names follow the pokebw2 decompilation's lists, and its walking Pokémon are read from the game's own table, by species, sex and form number. Some Black 2/White 2 people aren't named there yet, so they keep their object code's number.
+- Trainer class, form and walking Pokémon names follow pret's pokediamond, pokeplatinum and pokeheartgold projects, and so do HeartGold/SoulSilver's item and ball names and the item table that pairs each item with its icon. Black 2/White 2's trainer and overworld names follow the pokebw2 decompilation's lists, and its walking Pokémon are read from the game's own table, by species, sex and form number. Some Black 2/White 2 people aren't named there yet, so they keep their object code's number.
 - When the engine gets importers of its own for these games, Prism Importer can step aside.
 
 ## Credits

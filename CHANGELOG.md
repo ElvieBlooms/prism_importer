@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- HeartGold/SoulSilver's **bag icons** (`item_icons`, 32x32, by item name: `poke_ball`, `potion`, `tm24`) and **thrown balls** (`balls`, all 25 of them, Kurt's Apricorn balls and the Park Ball included: nine turns and the open ball) come out too, for mods that show items and balls in the DS look.
+- Every dump is pulled out again once, for the new packs.
+
 ## 0.3.0
 
 - First public release; no longer marked experimental.

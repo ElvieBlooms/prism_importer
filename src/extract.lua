@@ -9,6 +9,9 @@
 --   trainer_pics     trainer classes' pictures and the players' backs
 --   overworld        overworld sprite sheets
 --   walking_pokemon  HeartGold/SoulSilver's and Black 2/White 2's walking Pokemon
+--   item_icons       HeartGold/SoulSilver's bag icons, 32x32, by item name
+--   balls            HeartGold/SoulSilver's thrown balls: nine 16x16 turns,
+--                    then the open ball (32x32), by ball name
 --
 -- Ids follow the engine's gen5_bw pack: normal/025/front, shiny/025/back/female.
 -- -Elvie
@@ -23,8 +26,9 @@ local Pictures = require("mods.prism_importer.src.gen4.pictures")
 local Btx = require("mods.prism_importer.src.gen4.btx")
 local Names = require("mods.prism_importer.src.gen4.names")
 local Bw2Names = require("mods.prism_importer.src.gen5.names")
+local Items = require("mods.prism_importer.src.gen4.items")
 
-local Extract = { VERSION = "1.1.0", FRAME = 80 }
+local Extract = { VERSION = "1.2.0", FRAME = 80 }
 
 Extract.GAMES = {
   dppt = { name = "Diamond, Pearl or Platinum",
@@ -262,6 +266,8 @@ function Extract.gen4(ctx, rom, family, paths, archive, entry, alias, packs, ste
     step("Overworld " .. i)
   end
 
+  if Items.ARCHIVE[family] then Extract.items(rom, family, entry, step, add) end
+
   if #walking > 0 then
     add(#walking)
     local count = {}
@@ -291,6 +297,64 @@ function Extract.gen4(ctx, rom, family, paths, archive, entry, alias, packs, ste
       end
       step("Walking Pokemon " .. id)
     end
+  end
+end
+
+-- Tiles of a Gen 4 NCGR drawn into an ImageData: `count` tiles from `first`,
+-- `across` to a row, at (x, y), colour 0 see-through -Elvie
+function Extract.tiles(image, graphics, palette, first, count, across, x, y)
+  for t = 0, count - 1 do
+    local tx, ty = x + t % across * 8, y + math.floor(t / across) * 8
+    for py = 0, 7 do
+      for px = 0, 7 do
+        local index = graphics:getPixel(first + t, px, py)
+        if index ~= 0 then
+          local c = palette.colors[index + 1]
+          if c then image:setPixel(tx + px, ty + py, c.r / 255, c.g / 255, c.b / 255, 1) end
+        end
+      end
+    end
+  end
+end
+
+-- HeartGold/SoulSilver's bag icons and thrown balls -Elvie
+function Extract.items(rom, family, entry, step, add)
+  local icons = Narc.open(rom.file(Items.ARCHIVE[family]))
+  local balls = Narc.open(rom.file(Items.BALL_ARCHIVE[family]))
+  add(#Items.NAMES + #Items.BALLS)
+  local parsed = {}
+  local function member(arc, i, parse)
+    local key = tostring(arc) .. ":" .. i
+    if parsed[key] == nil then
+      local ok, v = pcall(parse, Lz.decode(arc.member(i)))
+      parsed[key] = ok and v or false
+    end
+    return parsed[key] or nil
+  end
+  for n, name in ipairs(Items.NAMES) do
+    local pic, pal = Items.icon(n)
+    local graphics = pic and member(icons, pic, Graphics.parseGraphics)
+    local palette = pal and member(icons, pal, Graphics.parsePalette)
+    if graphics and palette and graphics.tileCount >= 16 then
+      local image = love.image.newImageData(32, 32)
+      Extract.tiles(image, graphics, palette, 0, 16, 4, 0, 0)
+      entry("item_icons", name, png(image), { width = 32, height = 32, item = n })
+    end
+    step("Item " .. name)
+  end
+  for n, name in ipairs(Items.BALLS) do
+    local pic, pal = Items.ball(n)
+    local graphics = member(balls, pic, Graphics.parseGraphics)
+    local palette = member(balls, pal, Graphics.parsePalette)
+    if graphics and palette and graphics.tileCount >= 52 then
+      -- the turns in a row of 16x16 frames, the open ball under them -Elvie
+      local image = love.image.newImageData(144, 48)
+      for f = 0, 8 do Extract.tiles(image, graphics, palette, f * 4, 4, 2, f * 16, 0) end
+      Extract.tiles(image, graphics, palette, 36, 16, 4, 0, 16)
+      entry("balls", name, png(image), { width = 144, height = 48, ball = n,
+        sprite = { width = 16, height = 16, columns = 9, frames = 9 }, open = { x = 0, y = 16, width = 32, height = 32 } })
+    end
+    step("Ball " .. name)
   end
 end
 

@@ -4,6 +4,7 @@ package.path=ENGINE.."/?.lua;"..ENGINE.."/?/init.lua;./?.lua;"..package.path
 package.preload["mods.prism_importer.src.gen4.pictures"]=function() return dofile("src/gen4/pictures.lua") end
 package.preload["mods.prism_importer.src.gen4.btx"]=function() return dofile("src/gen4/btx.lua") end
 package.preload["mods.prism_importer.src.gen4.names"]=function() return dofile("src/gen4/names.lua") end
+package.preload["mods.prism_importer.src.gen4.items"]=function() return dofile("src/gen4/items.lua") end
 package.preload["mods.prism_importer.src.gen5.names"]=function() return dofile("src/gen5/names.lua") end
 package.preload["mods.prism_importer.src.menu"]=function() return dofile("src/menu.lua") end
 package.preload["mods.prism_importer.src.rom"]=function() return dofile("src/rom.lua") end
@@ -174,6 +175,24 @@ local walking=narc(u16(25)..u16(1)..u16(0)..u16(0x1001))
 local fake={file=function(path) return path=="/m" and models or walking end}
 local owners=Gen4.bw2Owners(fake,{models="/m",walking="/w"})
 check(owners[7][1].id=="hero" and owners[9][1].id=="025/female" and owners[9][1].walking and owners[0]==nil,"model table names sprites, walking Pokemon and skips 3D models")
+
+-- HeartGold/SoulSilver's items and balls (pokeheartgold's numbering)
+local Items=require("mods.prism_importer.src.gen4.items")
+check(#Items.NAMES==536 and Items.NAMES[1]=="master_ball" and Items.NAMES[17]=="potion" and Items.NAMES[328]=="tm01" and Items.NAMES[500]=="park_ball","HGSS item names")
+check(#Items.ICONS==536*2,"an icon and palette for every item")
+local pic,pal=Items.icon(1)
+check(pic==2 and pal==3 and Items.icon(537)==nil,"Master Ball's icon members, none past the list")
+local tm1,tm1p=Items.icon(328); local tm2,tm2p=Items.icon(329)
+check(tm1==tm2 and tm1p~=tm2p,"TMs share a disc, coloured by palette")
+check(#Items.BALLS==25 and Items.BALLS[4]=="poke_ball" and Items.BALLS[25]=="park_ball","HGSS balls in pokeheartgold's order")
+local b1,b1p=Items.ball(1)
+check(b1==261 and b1p==83 and select(1,Items.ball(25))==333,"ball tiles and palettes")
+-- a ball's tiles land in their frames
+local drawn={}
+local image={setPixel=function(_,x,y) drawn[#drawn+1]=x..","..y end}
+local graphics={getPixel=function(_,tile,x,y) return (x==0 and y==0) and 1 or 0 end}
+Gen4.tiles(image,graphics,{colors={{r=0,g=0,b=0},{r=255,g=0,b=0}}},0,4,2,16,0)
+check(table.concat(drawn," ")=="16,0 24,0 16,8 24,8","tiles two across at the frame's place")
 
 -- the IMPORTER page's words
 local Menu=require("mods.prism_importer.src.menu")
